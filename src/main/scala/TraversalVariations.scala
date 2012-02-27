@@ -6,7 +6,7 @@ import com.google.caliper.Param
 
 class TraversalVariations extends SimpleScalaBenchmark {
   
-  @Param(Array("10", "100" ))
+  @Param(Array("1", "10", "100", "1000" ))
   val length: Int = 0
 
   val wordLength = 8 
@@ -33,6 +33,9 @@ class TraversalVariations extends SimpleScalaBenchmark {
   override def setUp() {
     words = randomStream.take(length).toList
   }
+
+  def isCapitalized( s: String ) =
+    java.lang.Character.isUpperCase(s.charAt(0))
   
   def timeFunctional(reps: Int) = repeat(reps) {
     val (wlengthsMapUnzip, wcapsMapUnzip) =
@@ -45,7 +48,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
     var wcapsReassign = List[Boolean]()
     words.foreach { word =>
       wlengthsReassign = word.length :: wlengthsReassign
-		   wcapsReassign = word(0).isUpper :: wcapsReassign
+		   wcapsReassign = isCapitalized(word) :: wcapsReassign
 		 }
     (wlengthsReassign.head, wcapsReassign.head)
   }
@@ -56,7 +59,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
    val wcapsBuffer = ArrayBuffer[Boolean]()
    words.foreach { word =>
      wlengthsBuffer.append(word.length)
-		  wcapsBuffer.append(word(0).isUpper)
+		  wcapsBuffer.append(isCapitalized(word))
 		}
    ( wlengthsBuffer.head, wcapsBuffer.head )
  }
@@ -68,11 +71,27 @@ class TraversalVariations extends SimpleScalaBenchmark {
     var index = 0
     words.foreach { word =>
       wlengthsArray2(index) = word.length
-		   wcapsArray2(index) = word(0).isUpper
+		   wcapsArray2(index) = isCapitalized(word)
 		   index += 1
 		 }
     ( wlengthsArray2.head, wcapsArray2.head )
   }
+
+  def timeOldSchool(reps: Int) = repeat(reps) {
+    val n = words.length
+    val lengthAry = Array.ofDim[Int](n)
+    val capAry = Array.ofDim[Boolean](n)
+    var i = 0
+    val it = words.iterator
+    while( it.hasNext ) {
+      val w = it.next
+      lengthAry(i) = w.length
+      capAry(i) = isCapitalized(w)
+      i += 1
+    }
+    ( lengthAry.head, capAry.head )
+  }
+
 
   def timeRecurs(reps: Int) = repeat(reps) {
     def lengthCapRecurWrap(inputWords: List[String]): (List[Int], List[Boolean]) = {
@@ -85,7 +104,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
 	case Nil =>
 	  (lengths, caps)
 	  case head :: tail =>
-	    lengthCapRecurHelp(tail, head.length :: lengths, head(0).isUpper :: caps)
+	    lengthCapRecurHelp(tail, head.length :: lengths, isCapitalized(head) :: caps)
       }
       val (l,c) = lengthCapRecurHelp(words, List[Int](), List[Boolean]())
       (l.reverse, c.reverse)
