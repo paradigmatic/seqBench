@@ -30,7 +30,7 @@ object WordsGenerator {
 
 class TraversalVariations extends SimpleScalaBenchmark {
   
-  @Param(Array("10" ))
+  @Param(Array("10", "100", "1000", "10000", "100000" ))
   val length: Int = 0
 
   var words: List[String] = _
@@ -46,7 +46,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
  def timeFunctional(reps: Int) = repeat(reps) {
    val wLength = words.map( _.length )
    val wCaps = words.map( isCapitalized )
-    (wLength.head, wCaps.head) 
+    (wLength, wCaps) 
   }
 
  
@@ -58,7 +58,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
       wLength ::= word.length
       wCaps ::= isCapitalized(word)
     }
-    (wLength.head, wCaps.head)
+    (wLength, wCaps)
   }
 
 
@@ -71,7 +71,18 @@ class TraversalVariations extends SimpleScalaBenchmark {
      wLength.append(word.length)
      wCaps.append(isCapitalized(word))
    }
-   ( wLength.head, wCaps.head )
+   ( wLength, wCaps )
+ }
+
+ def timeBufferSafe(reps: Int) = repeat(reps) {
+   import collection.mutable._
+   val wLength = new ArrayBuffer[Int]()
+   val wCaps = new ArrayBuffer[Boolean]()
+   for( word <- words ) {
+     wLength.append(word.length)
+     wCaps.append(isCapitalized(word))
+   }
+   ( wLength.toList, wCaps.toList )
  }
 
 
@@ -87,7 +98,22 @@ class TraversalVariations extends SimpleScalaBenchmark {
       capAry(i) = isCapitalized(w)
       i += 1
     }
-    ( lengthAry.head, capAry.head )
+    ( lengthAry, capAry )
+  }
+
+  def timeOldSchoolSafe(reps: Int) = repeat(reps) {
+    val n = words.length
+    val lengthAry = Array.ofDim[Int](n)
+    val capAry = Array.ofDim[Boolean](n)
+    var i = 0
+    val it = words.iterator
+    while( it.hasNext ) {
+      val w = it.next
+      lengthAry(i) = w.length
+      capAry(i) = isCapitalized(w)
+      i += 1
+    }
+    ( lengthAry.toList, capAry.toList )
   }
 
 
@@ -102,7 +128,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
      }
 
    val (wLength,wCaps) = lengthAndCaps( words, Nil, Nil )
-   ( wLength.head, wCaps.head )
+   ( wLength, wCaps )
  }
 
  
