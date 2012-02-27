@@ -1,5 +1,10 @@
-java version "1.6.0_23"
-OpenJDK Runtime Environment (IcedTea6 1.11pre) (6b23~pre11-0ubuntu1.11.10.2)
-OpenJDK 64-Bit Server VM (build 20.0-b11, mixed mode)
-    scalaVersion := "2.9.1",
-Intel(R) Core(TM) i5-2500 CPU @ 3.30GHz
+JAVA:
+  java version "1.6.0_23"
+  OpenJDK Runtime Environment (IcedTea6 1.11pre) (6b23~pre11-0ubuntu1.11.10.2)
+  OpenJDK 64-Bit Server VM (build 20.0-b11, mixed mode)
+
+SCALA:
+  scalaVersion := "2.9.1",
+
+CPU:
+  Intel(R) Core(TM) i5-2500 CPU @ 3.30GHz
