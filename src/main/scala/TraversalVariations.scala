@@ -8,7 +8,7 @@ object WordsGenerator {
   val wordLength = 8 
   val big = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
   val small = big.toLowerCase
-  val letters = (big+small).map(_.toString)
+  val letters: IndexedSeq[String] = ( big + small ).map( _.toString )
 
   val rng = new util.Random
 
@@ -32,24 +32,66 @@ class TraversalVariations extends SimpleScalaBenchmark {
   
   @Param(Array("10", "100", "1000", "10000", "100000" ))
   val length: Int = 0
-
+  
   var words: List[String] = _
   
   override def setUp() {
     words = WordsGenerator.stream.take(length).toList
   }
-
+  
   def isCapitalized( s: String ) =
     java.lang.Character.isUpperCase(s.charAt(0))
-
- 
- def timeFunctional(reps: Int) = repeat(reps) {
-   val wLength = words.map( _.length )
-   val wCaps = words.map( isCapitalized )
-    (wLength, wCaps) 
+  
+  def timeOldSchool(reps: Int) = repeat(reps) {
+    val n = words.length
+    val wLength = Array.ofDim[Int](n)
+    val wCaps = Array.ofDim[Boolean](n)
+    var i = 0
+    val it = words.iterator
+    while( it.hasNext ) {
+      val w = it.next
+      wLength(i) = w.length
+      wCaps(i) = isCapitalized(w)
+      i += 1
+    }
+    ( wLength, wCaps )
+  }
+  
+  def timeOldSchoolSafe(reps: Int) = repeat(reps) {
+    val n = words.length
+    val wLength = Array.ofDim[Int](n)
+    val wCaps = Array.ofDim[Boolean](n)
+    var i = 0
+    val it = words.iterator
+    while( it.hasNext ) {
+      val w = it.next
+      wLength(i) = w.length
+      wCaps(i) = isCapitalized(w)
+      i += 1
+    }
+    ( wLength.toList, wCaps.toList )
   }
 
- 
+  def timeFunctional(reps: Int) = repeat(reps) {
+    val wLength = words.map( _.length )
+    val wCaps = words.map( isCapitalized )
+    (wLength, wCaps) 
+  }
+  
+  def timeRecurs(reps: Int) = repeat(reps) {
+    
+    @tailrec
+    def lengthAndCaps( ws: List[String], ls: List[Int], cs: List[Boolean] ): (List[Int],List[Boolean]) = 
+      if( ws.isEmpty ) 
+        (ls.reverse, cs.reverse)
+      else {
+        val w = ws.head
+        lengthAndCaps( ws.tail, w.length::ls, isCapitalized(w)::cs )
+      }
+
+    val (wLength,wCaps) = lengthAndCaps( words, Nil, Nil )
+    ( wLength, wCaps )
+  }
 
   def timeReassign(reps: Int) = repeat(reps) {
     var wLength = List[Int]()
@@ -60,8 +102,6 @@ class TraversalVariations extends SimpleScalaBenchmark {
     }
     (wLength, wCaps)
   }
-
-
 
  def timeBuffer(reps: Int) = repeat(reps) {
    import collection.mutable._
@@ -76,8 +116,8 @@ class TraversalVariations extends SimpleScalaBenchmark {
 
  def timeBufferSafe(reps: Int) = repeat(reps) {
    import collection.mutable._
-   val wLength = new ArrayBuffer[Int]()
-   val wCaps = new ArrayBuffer[Boolean]()
+   val wLength = new ListBuffer[Int]()
+   val wCaps = new ListBuffer[Boolean]()
    for( word <- words ) {
      wLength.append(word.length)
      wCaps.append(isCapitalized(word))
@@ -85,54 +125,6 @@ class TraversalVariations extends SimpleScalaBenchmark {
    ( wLength.toList, wCaps.toList )
  }
 
-
-  def timeOldSchool(reps: Int) = repeat(reps) {
-    val n = words.length
-    val lengthAry = Array.ofDim[Int](n)
-    val capAry = Array.ofDim[Boolean](n)
-    var i = 0
-    val it = words.iterator
-    while( it.hasNext ) {
-      val w = it.next
-      lengthAry(i) = w.length
-      capAry(i) = isCapitalized(w)
-      i += 1
-    }
-    ( lengthAry, capAry )
-  }
-
-  def timeOldSchoolSafe(reps: Int) = repeat(reps) {
-    val n = words.length
-    val lengthAry = Array.ofDim[Int](n)
-    val capAry = Array.ofDim[Boolean](n)
-    var i = 0
-    val it = words.iterator
-    while( it.hasNext ) {
-      val w = it.next
-      lengthAry(i) = w.length
-      capAry(i) = isCapitalized(w)
-      i += 1
-    }
-    ( lengthAry.toList, capAry.toList )
-  }
-
-
- def timeRecurs(reps: Int) = repeat(reps) {
-
-   @tailrec
-   def lengthAndCaps( ws: List[String], ls: List[Int], cs: List[Boolean] ): (List[Int],List[Boolean]) = 
-     if( ws.isEmpty ) (ls.reverse, cs.reverse)
-     else {
-       val w = ws.head
-       lengthAndCaps( ws.tail, w.length::ls, isCapitalized(w)::cs )
-     }
-
-   val (wLength,wCaps) = lengthAndCaps( words, Nil, Nil )
-   ( wLength, wCaps )
- }
-
- 
-  
   override def tearDown() {
     // clean up after yourself if required
   }
