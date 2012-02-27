@@ -1,5 +1,6 @@
-package org.example
+package org.streum
 
+import org.example._
 import annotation.tailrec
 import com.google.caliper.Param
 
