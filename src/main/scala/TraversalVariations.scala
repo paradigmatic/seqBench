@@ -31,7 +31,8 @@ object WordsGenerator {
 
 class TraversalVariations extends SimpleScalaBenchmark {
   
-  @Param(Array("10", "100", "1000", "10000", "100000" ))
+ // @Param(Array("10", "100", "1000", "10000", "100000" ))
+  @Param(Array("1000" ))
   val length: Int = 0
   
   var words: List[String] = _
@@ -57,7 +58,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
     }
     ( wLength, wCaps )
   }
-  
+
   def timeOldSchoolSafe(reps: Int) = repeat(reps) {
     val n = words.length
     val wLength = Array.ofDim[Int](n)
@@ -84,47 +85,79 @@ class TraversalVariations extends SimpleScalaBenchmark {
     @tailrec
     def lengthAndCaps( ws: List[String], ls: List[Int], cs: List[Boolean] ): (List[Int],List[Boolean]) = 
       if( ws.isEmpty ) 
-        (ls.reverse, cs.reverse)
+        (ls, cs)
       else {
         val w = ws.head
         lengthAndCaps( ws.tail, w.length::ls, isCapitalized(w)::cs )
       }
 
-    val (wLength,wCaps) = lengthAndCaps( words, Nil, Nil )
+    val (wLength,wCaps) = lengthAndCaps( words.reverse, Nil, Nil )
     ( wLength, wCaps )
   }
 
   def timeReassign(reps: Int) = repeat(reps) {
     var wLength = List[Int]()
     var wCaps = List[Boolean]()
-    for( word <- words ) {
+    for( word <- words.reverse ) {
       wLength ::= word.length
       wCaps ::= isCapitalized(word)
     }
     (wLength, wCaps)
   }
+  
+  def timeBuffer(reps: Int) = repeat(reps) {
+    import collection.mutable._
+    val wLength = new ArrayBuffer[Int]()
+    val wCaps = new ArrayBuffer[Boolean]()
+    for( word <- words ) {
+      wLength.append(word.length)
+      wCaps.append(isCapitalized(word))
+    }
+    ( wLength, wCaps )
+  }
 
- def timeBuffer(reps: Int) = repeat(reps) {
-   import collection.mutable._
-   val wLength = new ArrayBuffer[Int]()
-   val wCaps = new ArrayBuffer[Boolean]()
-   for( word <- words ) {
-     wLength.append(word.length)
-     wCaps.append(isCapitalized(word))
-   }
-   ( wLength, wCaps )
- }
+  def timeBufferSafe(reps: Int) = repeat(reps) {
+    import collection.mutable._
+    val wLength = new ListBuffer[Int]()
+    val wCaps = new ListBuffer[Boolean]()
+    for( word <- words ) {
+      wLength.append(word.length)
+      wCaps.append(isCapitalized(word))
+    }
+    ( wLength.toList, wCaps.toList )
+  }
+  
+  def timeFold(reps: Int) = repeat(reps) {
+    words.foldLeft( List[Int]() -> List[Boolean]() ){ (lsts,w) =>
+      ( w.length :: lsts._1, isCapitalized(w) :: lsts._2 )  
+    }
+  }
 
- def timeBufferSafe(reps: Int) = repeat(reps) {
-   import collection.mutable._
-   val wLength = new ListBuffer[Int]()
-   val wCaps = new ListBuffer[Boolean]()
-   for( word <- words ) {
-     wLength.append(word.length)
-     wCaps.append(isCapitalized(word))
-   }
-   ( wLength.toList, wCaps.toList )
- }
+  def timeJArrayList(reps: Int) = repeat(reps) {
+    import java.util.ArrayList
+    val n = words.size
+    val wLength = new ArrayList[Int](n)
+    val wCaps = new ArrayList[Boolean]()
+    for( word <- words ) {
+      wLength.add(word.length)
+      wCaps.add(isCapitalized(word))
+    }
+    ( wLength, wCaps )
+  } 
+
+  def timeJArrayListSafe(reps: Int) = repeat(reps) {
+    import java.util.ArrayList
+    import scala.collection.JavaConversions._
+    val n = words.size
+    val wLength = new ArrayList[Int](n)
+    val wCaps = new ArrayList[Boolean]()
+    for( word <- words ) {
+      wLength.add(word.length)
+      wCaps.add(isCapitalized(word))
+    }
+    ( wLength.toList, wCaps.toList )
+  } 
+
 
   override def tearDown() {
     // clean up after yourself if required
