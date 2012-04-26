@@ -3,6 +3,7 @@ package org.streum
 import org.example._
 import annotation.tailrec
 import com.google.caliper.Param
+import scala.collection._
 
 object WordsGenerator {
 
@@ -34,21 +35,27 @@ class TraversalVariations extends SimpleScalaBenchmark {
   @Param(Array("10", "100", "1000", "10000", "100000" ))
   val length: Int = 0
   
-  var words: List[String] = _
+  var words: Stream[String] = _
+  var wordsList: List[String] = _
+  var wordsArray: Array[String] = _
+  var wordsIndexedSeq: IndexedSeq[String] = _
   
   override def setUp() {
-    words = WordsGenerator.stream.take(length).toList
+    words = WordsGenerator.stream.take(length)
+    wordsList = words.toList
+    wordsArray = words.toArray
+    wordsIndexedSeq = words.toIndexedSeq
   }
   
   def isCapitalized( s: String ) =
     java.lang.Character.isUpperCase(s.charAt(0))
-  
+
   def timeOldSchool(reps: Int) = repeat(reps) {
     val n = words.length
     val wLength = Array.ofDim[Int](n)
     val wCaps = Array.ofDim[Boolean](n)
     var i = 0
-    val it = words.iterator
+    val it = wordsArray.iterator
     while( it.hasNext ) {
       val w = it.next
       wLength(i) = w.length
@@ -56,14 +63,14 @@ class TraversalVariations extends SimpleScalaBenchmark {
       i += 1
     }
     ( wLength, wCaps )
-  }
+  }  
   
   def timeOldSchoolSafe(reps: Int) = repeat(reps) {
     val n = words.length
     val wLength = Array.ofDim[Int](n)
     val wCaps = Array.ofDim[Boolean](n)
     var i = 0
-    val it = words.iterator
+    val it = wordsList.iterator
     while( it.hasNext ) {
       val w = it.next
       wLength(i) = w.length
@@ -71,14 +78,8 @@ class TraversalVariations extends SimpleScalaBenchmark {
       i += 1
     }
     ( wLength.toList, wCaps.toList )
-  }
-
-  def timeFunctional(reps: Int) = repeat(reps) {
-    val wLength = words.map( _.length )
-    val wCaps = words.map( isCapitalized )
-    (wLength, wCaps) 
-  }
-  
+  }     
+     
   def timeRecurs(reps: Int) = repeat(reps) {
     
     @tailrec
@@ -90,41 +91,119 @@ class TraversalVariations extends SimpleScalaBenchmark {
         lengthAndCaps( ws.tail, w.length::ls, isCapitalized(w)::cs )
       }
 
-    val (wLength,wCaps) = lengthAndCaps( words, Nil, Nil )
+    val (wLength,wCaps) = lengthAndCaps( wordsList, Nil, Nil )
     ( wLength, wCaps )
+  }  
+  
+  def timeFunctionalList(reps: Int) = repeat(reps) {
+    val wLength = wordsList.map( _.length )
+    val wCaps = wordsList.map( isCapitalized )
+    (wLength, wCaps) 
   }
-
+  
+  def timeFunctionalArray(reps: Int) = repeat(reps) {
+    val wLength = wordsArray.map( _.length )
+    val wCaps = wordsArray.map( isCapitalized )
+    (wLength, wCaps) 
+  }
+  
+  def timeFunctionalVector(reps: Int) = repeat(reps) {
+    val wLength = wordsIndexedSeq.map( _.length )
+    val wCaps = wordsIndexedSeq.map( isCapitalized )
+    (wLength, wCaps) 
+  }
+  
   def timeReassign(reps: Int) = repeat(reps) {
     var wLength = List[Int]()
     var wCaps = List[Boolean]()
-    for( word <- words ) {
+    for( word <- wordsList ) {
       wLength ::= word.length
       wCaps ::= isCapitalized(word)
     }
     (wLength, wCaps)
   }
+  
+  def timeArrayBuffer(reps: Int) = repeat(reps) {
+    import collection.mutable._
+    val n = wordsArray.length
+    val wLength = new ArrayBuffer[Int]()
+    wLength.sizeHint(n)
+    val wCaps = new ArrayBuffer[Boolean]()
+    wCaps.sizeHint(n)
+    for( word <- wordsArray ) {
+      wLength.append(word.length)
+      wCaps.append(isCapitalized(word))
+    }
+    ( wLength.toArray, wCaps.toArray )
+  }
 
- def timeBuffer(reps: Int) = repeat(reps) {
-   import collection.mutable._
-   val wLength = new ArrayBuffer[Int]()
-   val wCaps = new ArrayBuffer[Boolean]()
-   for( word <- words ) {
-     wLength.append(word.length)
-     wCaps.append(isCapitalized(word))
-   }
-   ( wLength, wCaps )
- }
+  def timeListBuffer(reps: Int) = repeat(reps) {
+    import collection.mutable._
+    val n = wordsArray.length
+    val wLength = new ListBuffer[Int]()
+    wLength.sizeHint(n)
+    val wCaps = new ListBuffer[Boolean]()
+    wCaps.sizeHint(n)
+    for( word <- wordsList ) {
+      wLength.append(word.length)
+      wCaps.append(isCapitalized(word))
+    }
+    ( wLength.toList, wCaps.toList )
+  }
+ 
+  def timeArrayBuilder(reps: Int) = repeat(reps) {
+    val n = wordsArray.length
+    val wLength = Array.newBuilder[Int]
+    wLength.sizeHint(n)
+    val wCaps = Array.newBuilder[Boolean]
+    wCaps.sizeHint(n)
+    for( word <- wordsArray ) {
+      wLength += word.length
+      wCaps += isCapitalized(word)
+    }
+    ( wLength.result(), wCaps.result() )
+  }
 
- def timeBufferSafe(reps: Int) = repeat(reps) {
-   import collection.mutable._
-   val wLength = new ListBuffer[Int]()
-   val wCaps = new ListBuffer[Boolean]()
-   for( word <- words ) {
-     wLength.append(word.length)
-     wCaps.append(isCapitalized(word))
-   }
-   ( wLength.toList, wCaps.toList )
- }
+  def timeListBuilder(reps: Int) = repeat(reps) {
+    val n = wordsList.length
+    val wLength = List.newBuilder[Int]
+    wLength.sizeHint(n)
+    val wCaps = List.newBuilder[Boolean]
+    wCaps.sizeHint(n)
+    for( word <- wordsList ) {
+      wLength += word.length
+      wCaps += isCapitalized(word)
+    }
+    ( wLength.result(), wCaps.result() )
+  }
+
+  def timeMapBuilder(reps: Int) = repeat(reps) {
+    val n = wordsArray.length
+    val map = Map.newBuilder[String, (Int, Boolean)]
+    map.sizeHint(n)
+    for( word <- wordsArray ) {
+      map += (word -> (word.length, isCapitalized(word)))
+    }
+    map.result()
+  }
+    
+  def timeReassignMap(reps: Int) = repeat(reps) {
+    var map = Map[String, (Int, Boolean)]()
+    for( word <- wordsList ) {
+      map = map + (word -> (word.length, isCapitalized(word)))
+    }
+    map
+  }
+  
+  def timeMutableMap(reps: Int) = repeat(reps) {
+    val n = wordsArray.length
+    var map = collection.mutable.Map[String, (Int, Boolean)]()
+    map.sizeHint(n)
+    for( word <- wordsList ) {
+      map += (word -> (word.length, isCapitalized(word)))
+    }
+    map.toMap
+  }
 
   override def tearDown() {
     // clean up after yourself if required
