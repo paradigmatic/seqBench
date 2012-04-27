@@ -32,7 +32,7 @@ object WordsGenerator {
 
 class TraversalVariations extends SimpleScalaBenchmark {
   
-  @Param(Array("100000" ))
+  @Param(Array("10", "100", "1000", "10000", "100000"))
   val length: Int = 0
   
   var words: Stream[String] = _
