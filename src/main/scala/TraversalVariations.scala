@@ -95,7 +95,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
   def timeReassign(reps: Int) = repeat(reps) {
     var wLength = List[Int]()
     var wCaps = List[Boolean]()
-    for( word <- wordsList ) {
+    for( word <- wordsList.reverse ) {
       wLength ::= word.length
       wCaps ::= isCapitalized(word)
     }
@@ -107,15 +107,22 @@ class TraversalVariations extends SimpleScalaBenchmark {
     @tailrec
     def lengthAndCaps( ws: List[String], ls: List[Int], cs: List[Boolean] ): (List[Int],List[Boolean]) = 
       if( ws.isEmpty ) 
-        (ls.reverse, cs.reverse)
+        (ls, cs)
       else {
         val w = ws.head
         lengthAndCaps( ws.tail, w.length::ls, isCapitalized(w)::cs )
       }
 
-    val (wLength,wCaps) = lengthAndCaps( wordsList, Nil, Nil )
+    val (wLength,wCaps) = lengthAndCaps( wordsList.reverse, Nil, Nil )
     ( wLength, wCaps )
   }  
+  
+  def timeFold(reps: Int) = repeat(reps) {
+    val (wLength,wCaps) = wordsList.foldLeft( List[Int]() -> List[Boolean]() ){ (lsts,w) =>
+      ( w.length :: lsts._1, isCapitalized(w) :: lsts._2 )  
+    }
+    ( wLength, wCaps )
+  }
   
   def timeBuffer(reps: Int) = repeat(reps) {
     import collection.mutable._
