@@ -10,9 +10,9 @@ object WordsGenerator {
   val wordLength = 8 
   val big = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
   val small = big.toLowerCase
-  val letters: IndexedSeq[String] = ( big + small ).map( _.toString )
+  val letters = ( big + small ).map( _.toString )
 
-  val rng = new util.Random
+  val rng = new util.Random(0)
 
   def randomWord =  {
     var str = ""
@@ -49,7 +49,7 @@ class TraversalVariations extends SimpleScalaBenchmark {
   
   def isCapitalized( s: String ) =
     java.lang.Character.isUpperCase(s.charAt(0))
-
+  
   def timeOldSchool(reps: Int) = repeat(reps) {
     val n = words.length
     val wLength = Array.ofDim[Int](n)
@@ -63,14 +63,14 @@ class TraversalVariations extends SimpleScalaBenchmark {
       i += 1
     }
     ( wLength, wCaps )
-  }  
+  }   
   
   def timeOldSchoolSafe(reps: Int) = repeat(reps) {
     val n = words.length
     val wLength = Array.ofDim[Int](n)
     val wCaps = Array.ofDim[Boolean](n)
     var i = 0
-    val it = wordsList.iterator
+    val it = wordsArray.iterator
     while( it.hasNext ) {
       val w = it.next
       wLength(i) = w.length
@@ -78,8 +78,30 @@ class TraversalVariations extends SimpleScalaBenchmark {
       i += 1
     }
     ( wLength.toList, wCaps.toList )
-  }     
+  } 
+      
+  def timeFunctList(reps: Int) = repeat(reps) {
+    val wLength = wordsList.map( _.length )
+    val wCaps = wordsList.map( isCapitalized )
+    (wLength, wCaps) 
+  }
+  
+  def timeFunctVector(reps: Int) = repeat(reps) {
+    val wLength = wordsIndexedSeq.map( _.length )
+    val wCaps = wordsIndexedSeq.map( isCapitalized )
+    (wLength, wCaps) 
+  }    
      
+  def timeReassign(reps: Int) = repeat(reps) {
+    var wLength = List[Int]()
+    var wCaps = List[Boolean]()
+    for( word <- wordsList ) {
+      wLength ::= word.length
+      wCaps ::= isCapitalized(word)
+    }
+    (wLength, wCaps)
+  }
+  
   def timeRecurs(reps: Int) = repeat(reps) {
     
     @tailrec
@@ -95,49 +117,21 @@ class TraversalVariations extends SimpleScalaBenchmark {
     ( wLength, wCaps )
   }  
   
-  def timeFunctionalList(reps: Int) = repeat(reps) {
-    val wLength = wordsList.map( _.length )
-    val wCaps = wordsList.map( isCapitalized )
-    (wLength, wCaps) 
-  }
-  
-  def timeFunctionalArray(reps: Int) = repeat(reps) {
-    val wLength = wordsArray.map( _.length )
-    val wCaps = wordsArray.map( isCapitalized )
-    (wLength, wCaps) 
-  }
-  
-  def timeFunctionalVector(reps: Int) = repeat(reps) {
-    val wLength = wordsIndexedSeq.map( _.length )
-    val wCaps = wordsIndexedSeq.map( isCapitalized )
-    (wLength, wCaps) 
-  }
-  
-  def timeReassign(reps: Int) = repeat(reps) {
-    var wLength = List[Int]()
-    var wCaps = List[Boolean]()
-    for( word <- wordsList ) {
-      wLength ::= word.length
-      wCaps ::= isCapitalized(word)
-    }
-    (wLength, wCaps)
-  }
-  
-  def timeArrayBuffer(reps: Int) = repeat(reps) {
+  def timeBuffer(reps: Int) = repeat(reps) {
     import collection.mutable._
     val n = wordsArray.length
-    val wLength = new ArrayBuffer[Int]()
+    val wLength = new ListBuffer[Int]()
     wLength.sizeHint(n)
-    val wCaps = new ArrayBuffer[Boolean]()
+    val wCaps = new ListBuffer[Boolean]()
     wCaps.sizeHint(n)
-    for( word <- wordsArray ) {
+    for( word <- wordsList ) {
       wLength.append(word.length)
       wCaps.append(isCapitalized(word))
     }
-    ( wLength.toArray, wCaps.toArray )
+    ( wLength, wCaps)
   }
-
-  def timeListBuffer(reps: Int) = repeat(reps) {
+  
+  def timeBufferSafe(reps: Int) = repeat(reps) {
     import collection.mutable._
     val n = wordsArray.length
     val wLength = new ListBuffer[Int]()
@@ -150,21 +144,8 @@ class TraversalVariations extends SimpleScalaBenchmark {
     }
     ( wLength.toList, wCaps.toList )
   }
- 
-  def timeArrayBuilder(reps: Int) = repeat(reps) {
-    val n = wordsArray.length
-    val wLength = Array.newBuilder[Int]
-    wLength.sizeHint(n)
-    val wCaps = Array.newBuilder[Boolean]
-    wCaps.sizeHint(n)
-    for( word <- wordsArray ) {
-      wLength += word.length
-      wCaps += isCapitalized(word)
-    }
-    ( wLength.result(), wCaps.result() )
-  }
-
-  def timeListBuilder(reps: Int) = repeat(reps) {
+  
+  def timeBuilder(reps: Int) = repeat(reps) {
     val n = wordsList.length
     val wLength = List.newBuilder[Int]
     wLength.sizeHint(n)
@@ -175,34 +156,6 @@ class TraversalVariations extends SimpleScalaBenchmark {
       wCaps += isCapitalized(word)
     }
     ( wLength.result(), wCaps.result() )
-  }
-
-  def timeMapBuilder(reps: Int) = repeat(reps) {
-    val n = wordsArray.length
-    val map = Map.newBuilder[String, (Int, Boolean)]
-    map.sizeHint(n)
-    for( word <- wordsArray ) {
-      map += (word -> (word.length, isCapitalized(word)))
-    }
-    map.result()
-  }
-    
-  def timeReassignMap(reps: Int) = repeat(reps) {
-    var map = Map[String, (Int, Boolean)]()
-    for( word <- wordsList ) {
-      map = map + (word -> (word.length, isCapitalized(word)))
-    }
-    map
-  }
-  
-  def timeMutableMap(reps: Int) = repeat(reps) {
-    val n = wordsArray.length
-    var map = collection.mutable.Map[String, (Int, Boolean)]()
-    map.sizeHint(n)
-    for( word <- wordsList ) {
-      map += (word -> (word.length, isCapitalized(word)))
-    }
-    map.toMap
   }
 
   override def tearDown() {
